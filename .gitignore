@@ -1,0 +1,10 @@
+# Ignore data files
+data/dataset%20%286%29.tgz
+data/set1.test.txt
+data/set1.train.txt
+data/set1.valid.txt
+data/set1_train_data.npz
+data/set1_valid_data.npz
+
+notebooks/sample-data.py
+# Ignore environment variables
