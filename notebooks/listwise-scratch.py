@@ -19,11 +19,11 @@ y_train = train_data["y"]
 qid_train = train_data["qid"]
 
 
-valid_data = np.load("../data/set1_val_sample_data.npz")
+val_data = np.load("../data/set1_val_sample_data.npz")
 
-X_valid = valid_data["X"]
-y_valid = valid_data["y"]
-qid_valid = valid_data["qid"]
+X_val = val_data["X"]
+y_val = val_data["y"]
+qid_val = val_data["qid"]
 
 
 # =========================
@@ -40,6 +40,7 @@ for i in range(3):
     print("y (relevance):", y_train[i])
     print("qid:", qid_train[i])
     print("features:", X_train[i])
+
 
 # Relevance Label Distribution
 unique, counts = np.unique(y_train, return_counts=True)
@@ -68,6 +69,7 @@ plt.xlabel("Docs per Query")
 plt.ylabel("Frequency")
 plt.show()
 
+
 # =========================
 # 4. Preprocessing
 # =========================
@@ -80,56 +82,74 @@ non_zero_counts = (X_train != 0).sum(axis=0)
 # Select features with at least 10 non-zero values
 mask = non_zero_counts > 10
 X_train_reduced = X_train[:, mask]
-X_val_reduced = X_valid[:, mask]
+X_val_reduced = X_val[:, mask]
 
 print("Original features:", X_train.shape[1])
 print("Reduced features:", X_train_reduced.shape[1])
 
-
 # =========================
-# 5. Pointwise Model (from scratch)
+# 5. Listwise Model (from scratch)
 # =========================
 # - Linear regression
-# - Loss: MSE or Cross-Entropy
 
-# Initialize weights and bias
-weights = np.zeros(X_train_reduced.shape[1])
-bias = y_train.mean()
-n_samples = X_train_reduced.shape[0]
+# ---- Step 0: Softmax function ----
+def softmax(scores):
+    exps = np.exp(scores - np.max(scores))  
+    return exps / np.sum(exps)
 
-# Hyperparameters
-l_rate = 0.01
-num_iterations = 100
 
-# Track loss
-mse_hist = []
+def listwise_scratch(X_train, y_train, l_rate, iter):
+# ---- Step 1: Initialize weights ----
+    weights = np.zeros(X_train_reduced.shape[1])
+    bias = 0.0  # or y_train.mean()
 
-for i in range(num_iterations):
-    # 1️ Predict
-    pred = np.dot(X_train_reduced, weights) + bias  # vectorized
-    
-    # 2️ Compute MSE
-    mse = np.mean((y_train - pred) ** 2)
-    mse_hist.append(mse)
-    
-    # 3️ Compute gradients (vectorized)
-    grad_w = (2 / n_samples) * np.dot(X_train_reduced.T, (pred - y_train))
-    grad_b = 2 * np.mean(pred - y_train)
-    
-    # 4️ Update weights
-    weights -= l_rate * grad_w
-    bias -= l_rate * grad_b
-    
-    if i % 10 == 0:
-        print(f"Iteration {i}: MSE={mse:.4f}")
+    # Track loss
+    loss_hist = []
 
+    # ---- Step 2: Training loop ----
+    for i in range(iter):
+        # 2.1 Predict scores for all docs in the query
+        scores = np.dot(X_train_reduced, weights) + bias  
+
+        # 2.2 Convert predicted scores to probabilities
+        pred = softmax(scores)  
+
+        # 2.3 Convert relevance labels to target distribution
+        target = softmax(y_train)  
+
+        # 2.4 Compute cross-entropy loss
+        loss = -np.sum(target * np.log(pred + 1e-8))  
+        loss_hist.append(loss)
+
+        # 2.5 Compute gradients
+        grad_w = np.dot(X_train_reduced.T, (pred - target))  
+        grad_b = np.sum(pred - target) 
+
+        # 2.6 Update weights
+        weights -= l_rate * grad_w
+        bias -= l_rate * grad_b
+
+
+    return weights, bias, loss_hist
+
+
+
+iter=100
+l_rate=0.01
+lambda_=0.1
+
+weights, bias, loss_hist = listwise_scratch(X_train_reduced, y_train, l_rate, iter)
+
+plt.plot(range(0,iter), loss_hist)
+plt.title("Training Cross Entropy Loss over Iterations")
+plt.xlabel('Iteration')
+plt.ylabel('Loss')
+plt.show()
 
 
 # =========================
 # 6. Ranking Evaluation
 # =========================
-# - Sort predictions within each query
-# - Compute ranking metric (e.g. NDCG@k)
 
 
 def dcg(rels, k):
@@ -162,17 +182,16 @@ print(f"NDCG@5 on validation: {ndcg_score:.4f}")
 
 
 # pick 3 random queries from validation
-np.random.seed(42)
-sample_queries = np.random.choice(np.unique(qid_valid), 3, replace=False)
+unique_val_qid, qid_val_counts = np.unique(qid_val, return_counts=True)
+valid_qids = unique_val_qid[qid_val_counts == 4]
 
-
-for q in sample_queries:
-    mask = qid_valid == q
-    true_rels = y_valid[mask]
+for q in valid_qids:
+    mask = qid_val == q
+    true_rels = y_val[mask]
     pred_scores = pred_val[mask]
     
     # sort by predicted scores
-    sorted_indices = np.argsort(-pred_scores)
+    sorted_indices = np.argsort(-true_rels)
     true_sorted = true_rels[sorted_indices]
     pred_sorted = pred_scores[sorted_indices]
     
@@ -185,41 +204,3 @@ for q in sample_queries:
     plt.legend()
     plt.show()
 
-# =========================
-# 8. Insights
-# =========================
-
-
-
-# Parameters
-k_max = 10  # max number of top documents to show per query
-sample_queries = np.random.choice(np.unique(qid_valid), 50, replace=False)  # sample 50 queries
-
-heatmap_matrix = np.zeros((len(sample_queries), k_max))
-
-for i, q in enumerate(sample_queries):
-    mask = qid_valid == q
-    true_rels = y_valid[mask]
-    pred_scores = pred_val[mask]
-    
-    # sort documents by predicted scores descending
-    sorted_indices = np.argsort(-pred_scores)
-    true_sorted = true_rels[sorted_indices]
-    
-    # take top-k
-    topk = true_sorted[:k_max]
-    
-    # pad with -1 if fewer than k_max documents
-    if len(topk) < k_max:
-        topk = np.concatenate([topk, -1*np.ones(k_max - len(topk))])
-        
-    heatmap_matrix[i, :] = topk
-
-# Plot heatmap
-plt.figure(figsize=(12,8))
-plt.imshow(heatmap_matrix, aspect='auto', cmap='viridis', interpolation='nearest')
-plt.colorbar(label='True Relevance')
-plt.xlabel('Ranked Document Position (by predicted score)')
-plt.ylabel('Queries')
-plt.title('Heatmap of True Relevance for Top-K Predicted Documents')
-plt.show()
