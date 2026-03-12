@@ -5,6 +5,7 @@ data/set1.train.txt
 data/set1.valid.txt
 data/set1_train_data.npz
 data/set1_valid_data.npz
-
 notebooks/sample-data.py
+
+
 # Ignore environment variables

@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import lightgbm as lgb
+from sklearn.svm import LinearSVC
 from itertools import combinations
 from sklearn.metrics import ndcg_score
 
@@ -99,6 +99,7 @@ unique_val_qid, qid_val_counts = np.unique(qid_val, return_counts=True)
 
 qid_counts = qid_counts.astype(int).flatten().tolist()
 qid_val_counts = qid_val_counts.astype(int).flatten().tolist()
+
 # =========================
 # 5. Pairwise Model
 # =========================
@@ -144,23 +145,9 @@ X_pair, y_pair = build_pairwise(X_train_reduced, y_train, qid_train)
 print(X_pair.shape, y_pair.shape)
 
 
- 
+model = LinearSVC()
 
-ranker = lgb.LGBMRanker(
-    objective="lambdarank",   # pairwise ranking loss
-    metric="ndcg",
-    learning_rate=0.05,
-    n_estimators=100
-)
-
-ranker.fit(
-    X_train,
-    y_train,
-    group=qid_counts,
-    eval_set=[(X_val, y_val)],
-    eval_group=[qid_val_counts],
-    eval_at=[5]
-)
+model.fit(X_pair, y_pair)
 
 
 # =========================
@@ -168,7 +155,7 @@ ranker.fit(
 # =========================
 # Predict scores for all original items
 
-pred_val = ranker.predict(X_val)
+pred_val = model.decision_function(X_val_reduced)
 
 def pairwise_accuracy(scores, y, qid):
     correct = 0
