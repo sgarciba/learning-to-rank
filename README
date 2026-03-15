@@ -1,148 +1,69 @@
-# Learning to Rank: Pointwise vs Pairwise vs Listwise
+# Learning-to-Rank – Yahoo! LTR Challenge Sample
 
-This project explores the three main approaches used in **Learning to Rank (LTR)**:
+## Project Overview
+This project explores **learning-to-rank models** using a subset of the **Yahoo! Learning to Rank Challenge (C14, version 1.0)** dataset.  
 
-* Pointwise
-* Pairwise
-* Listwise
+Learning-to-rank is widely used in search engines, recommendation systems, and marketplaces to **order items so that the most relevant appear first**.  
 
-Each approach is implemented **from scratch** to understand the underlying mechanics and also using **pre-built machine learning models** to compare with production-ready solutions.
-
-The goal of this project is **educational**: to understand how ranking algorithms work and how they differ conceptually and practically.
+The focus of this project is **modeling methodology and experimentation**, rather than producing actionable recommendations, due to anonymized features.
 
 ---
 
-# Learning to Rank Approaches
+## Dataset
 
-## 1. Pointwise
+**Original dataset**: Yahoo! LTR Challenge C14 (version 1.0)  
+- Training queries: 19,944  
+- Validation queries: 2,994  
+- Test queries: 6,983  
+- URLs: 473,134 (train)  
+- features: 519–596  
 
-The pointwise approach treats ranking as a **standard regression or classification problem**.
+**My sample**:  
+- Randomly selected **5,000 rows** on training set for faster experimentation and **1,000 rows** on validation set.
+- Limitation: sampled by rows, not by query, so some queries only have 1–4 documents. This reduces model performance but is sufficient for experimentation.
 
-Each document is scored **independently** and the final ranking is obtained by sorting documents by their predicted score.
-
-### Key idea
-
-Predict a relevance score for each document.
-
-Example workflow:
-
-features → model → predicted score → sort by score
-
-### Implementations in this project
-
-From scratch:
-
-* Linear regression trained with gradient descent.
-
-Library model:
-
-* Regression model using scikit-learn.
+**Important:** Feature names are anonymized. This project is therefore **focused on methodology, model training, and evaluation metrics**, rather than feature-level analysis or business recommendations.
 
 ---
 
-## 2. Pairwise
+## Approach
 
-The pairwise approach transforms the ranking problem into a **binary comparison task**.
+1. **Preprocessing**
+   - Normalized features  
+   - Handled missing values  
+   - Split into train / validation / test  
 
-Instead of predicting a score directly, the model learns which document in a pair should rank higher.
+2. **Modeling**
+   - Implemented ranking models: e.g., RankNet, XGBoost ranker  
+   - Trained models on sampled dataset  
 
-### Key idea
+3. **Evaluation**
+   - Metrics: **NDCG@5**, **Precision@K**, **MAP**  
+   - Compared model performance across different parameters  
 
-Learn preferences between pairs of documents.
-
-Example:
-
-doc_i should rank above doc_j
-
-The model is trained on feature differences:
-
-x_i − x_j
-
-### Implementations in this project
-
-From scratch:
-
-* Pairwise loss similar to RankNet.
-
-Library model:
-
-* RankSVM implemented with scikit-learn.
+4. **Experimental insights**
+   - Sampling strategy affects performance  
+   - Algorithm choice impacts ranking quality  
+   - Demonstrates ability to handle high-dimensional datasets
 
 ---
 
-## 3. Listwise
+## Example Output
 
-The listwise approach considers the **entire list of documents for a query** during training.
+```text
+Query: "sample query text"
+Ranked URLs:
+1. url_10234
+2. url_23567
+3. url_47890
 
-Instead of optimizing individual scores or pair comparisons, the model learns to optimize the **overall ranking quality**.
-
-### Key idea
-
-Optimize ranking metrics such as **NDCG**.
-
-Example workflow:
-
-scores → softmax → probability distribution over documents → ranking loss
-
-### Implementations in this project
-
-From scratch:
-
-* ListNet style implementation using softmax and cross-entropy.
-
-Library model:
-
-* LambdaMART using LightGBM.
-
----
-
-# Project Structure
-
-```
-learning-to-rank/ntoebooks
+learning-to-rank/
 │
-├── pointwise_from_scratch.ipynb
-├── pointwise_library_model.ipynb
-│
-├── pairwise_from_scratch.ipynb
-├── pairwise_library_model.ipynb
-│
-├── listwise_from_scratch.ipynb
-├── listwise_library_model.ipynb
-│
+├── data/                  # sample dataset
+├── notebooks/             # preprocessing, experiments, 
+├── src/                   # model code, helpers
+├── figures/               # visualizations
 └── README.md
-```
-
-Each notebook contains:
-
-* explanation of the approach
-* model implementation
-* training procedure
-* ranking evaluation
-
----
-
-# Evaluation Metric
-
-The models are evaluated using **NDCG (Normalized Discounted Cumulative Gain)**, which measures the quality of the ranking by giving higher importance to documents appearing at the top of the list.
-
----
-
-# Key Takeaways
-
-| Approach  | Training Unit      | Main Idea                               |
-| --------- | ------------------ | --------------------------------------- |
-| Pointwise | Single document    | Predict relevance score                 |
-| Pairwise  | Document pairs     | Learn which document should rank higher |
-| Listwise  | Full document list | Optimize ranking quality directly       |
-
----
-
-# Purpose of This Project
-
-This project is designed as a **learning exercise** to better understand ranking algorithms and their differences, rather than as a production ranking system.
-
-
 
 ------------------------------------------------------------------
 
