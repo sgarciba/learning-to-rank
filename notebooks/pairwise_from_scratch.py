@@ -15,13 +15,13 @@ from itertools import combinations
 # y: relevance label
 # qid: query id (used only for evaluation)
 
-train_data = np.load("../data/set1_train_sample_data.npz")
+train_data = np.load("../data/train_sample_data.npz")
 
 X_train = train_data["X"]
 y_train = train_data["y"]
 qid_train = train_data["qid"]
 
-val_data = np.load("../data/set1_val_sample_data.npz")
+val_data = np.load("../data/val_sample_data.npz")
 
 X_val = val_data["X"]
 y_val = val_data["y"]
@@ -232,11 +232,10 @@ pred_scores_val = np.dot(X_val_reduced, weights) + bias  # shape: (n_documents,)
 
 # Find queries with more than 1 document
 unique_qids, counts = np.unique(qid_val, return_counts=True)
-valid_qids = unique_qids[counts == 4]
 
 # Pick 3 random queries
 np.random.seed(302)
-sample_qids = np.random.choice(np.unique(valid_qids), 3, replace=False)
+sample_qids = np.random.choice(np.unique(unique_qids), 3, replace=False)
 
 plt.figure(figsize=(18,5))
 
@@ -246,7 +245,7 @@ for i, qid in enumerate(sample_qids):
     pred_scores = pred_scores_val[mask]
 
     # Sort documents by predicted score descending
-    order = np.argsort(-pred_scores)
+    order = np.argsort(-true_rels)
     true_sorted = true_rels[order]
     pred_sorted = pred_scores[order]
 

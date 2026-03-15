@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 # y: relevance label
 # qid: query id (used only for evaluation)
 
-train_data = np.load("../data/set1_train_sample_data.npz")
+train_data = np.load("../data/train_sample_data.npz")
 
 X_train = train_data["X"]
 y_train = train_data["y"]
 qid_train = train_data["qid"]
 
 
-val_data = np.load("../data/set1_val_sample_data.npz")
+val_data = np.load("../data/val_sample_data.npz")
 
 X_val = val_data["X"]
 y_val = val_data["y"]
@@ -177,16 +177,18 @@ def ndcg_at_k(y_true, y_pred, qid, k=5):
 
 
 pred_val = np.dot(X_val_reduced, weights) + bias
-ndcg_score = ndcg_at_k(y_valid, pred_val, qid_valid, k=5)
+ndcg_score = ndcg_at_k(y_val, pred_val, qid_val, k=5)
 print(f"NDCG@5 on validation: {ndcg_score:.4f}")
 
 
 # pick 3 random queries from validation
 unique_val_qid, qid_val_counts = np.unique(qid_val, return_counts=True)
-valid_qids = unique_val_qid[qid_val_counts == 4]
+np.random.seed(302)
+sample_qids = np.random.choice(np.unique(unique_val_qid), 3, replace=False)
 
-for q in valid_qids:
-    mask = qid_val == q
+plt.figure(figsize=(18,5))
+for i, qid in enumerate(sample_qids):
+    mask = qid_val == qid
     true_rels = y_val[mask]
     pred_scores = pred_val[mask]
     
@@ -195,12 +197,13 @@ for q in valid_qids:
     true_sorted = true_rels[sorted_indices]
     pred_sorted = pred_scores[sorted_indices]
     
-    plt.figure(figsize=(6,4))
+    plt.subplot(1, 3, i+1)
     plt.plot(range(1, len(true_sorted)+1), true_sorted, marker='o', label='True Relevance')
     plt.plot(range(1, len(pred_sorted)+1), pred_sorted, marker='x', label='Predicted Score')
-    plt.title(f'Query ID {q} - True vs Predicted Relevance')
+    plt.title(f'Query ID {qid} - True vs Predicted Relevance')
     plt.xlabel('Ranked Documents')
     plt.ylabel('Relevance / Score')
     plt.legend()
-    plt.show()
+
+plt.show()
 

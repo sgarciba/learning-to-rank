@@ -13,19 +13,17 @@ import os
 sys.path.append(os.path.abspath(".."))
 from src.functions import dcg_at_k, ndcg_at_k
 
-
-
 # =========================
 # 2. Load Dataset
 # =========================
-train_data = np.load("../data/set1_train_sample_data.npz")
+train_data = np.load("../data/train_sample_data.npz")
 
 X_train = train_data["X"]
 y_train = train_data["y"]
 qid_train = train_data["qid"]
 
 
-val_data = np.load("../data/set1_val_sample_data.npz")
+val_data = np.load("../data/val_sample_data.npz")
 
 X_val = val_data["X"]
 y_val = val_data["y"]
@@ -103,11 +101,11 @@ best_score = -np.inf
 best_params = None
 
 param_grid = {
-    "num_leaves": [31, 63],
-    "max_depth": [-1, 10],
-    "learning_rate": [0.05, 0.1],
-    "num_iterations": [100, 300],
-    "min_data_in_leaf": [20, 50]
+    "num_leaves": [30],
+    "max_depth": [-1],
+    "learning_rate": [0.1],
+    "num_iterations": [100],
+    "min_data_in_leaf": [20]
 }
 
 
@@ -148,7 +146,7 @@ for q in sample_queries:
     pred_scores = preds[mask]
     
     # sort by predicted scores
-    sorted_indices = np.argsort(-pred_scores)
+    sorted_indices = np.argsort(-true_rels)
     true_sorted = true_rels[sorted_indices]
     pred_sorted = pred_scores[sorted_indices]
     

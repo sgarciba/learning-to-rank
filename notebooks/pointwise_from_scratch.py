@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 # y: relevance label
 # qid: query id (used only for evaluation)
 
-train_data = np.load("../data/set1_train_sample_data.npz")
+train_data = np.load("../data/train_sample_data.npz")
 
 X_train = train_data["X"]
 y_train = train_data["y"]
 qid_train = train_data["qid"]
 
 
-valid_data = np.load("../data/set1_val_sample_data.npz")
+valid_data = np.load("../data/val_sample_data.npz")
 
 X_valid = valid_data["X"]
 y_valid = valid_data["y"]
@@ -172,7 +172,7 @@ for q in sample_queries:
     pred_scores = pred_val[mask]
     
     # sort by predicted scores
-    sorted_indices = np.argsort(-pred_scores)
+    sorted_indices = np.argsort(-true_rels)
     true_sorted = true_rels[sorted_indices]
     pred_sorted = pred_scores[sorted_indices]
     
@@ -188,8 +188,6 @@ for q in sample_queries:
 # =========================
 # 8. Insights
 # =========================
-
-
 
 # Parameters
 k_max = 10  # max number of top documents to show per query

@@ -14,14 +14,14 @@ from sklearn.metrics import ndcg_score
 # y: relevance label
 # qid: query id (used only for evaluation)
 
-train_data = np.load("../data/set1_train_sample_data.npz")
+train_data = np.load("../data/train_sample_data.npz")
 
 X_train = train_data["X"]
 y_train = train_data["y"]
 qid_train = train_data["qid"]
 
 
-val_data = np.load("../data/set1_val_sample_data.npz")
+val_data = np.load("../data/val_sample_data.npz")
 
 X_val = val_data["X"]
 y_val = val_data["y"]
@@ -160,11 +160,10 @@ print(ndcg)
 # 7. Visualize Results
 # =========================
 unique_val_qid, qid_val_counts = np.unique(qid_val, return_counts=True)
-valid_qids = unique_val_qid[qid_val_counts == 4]
 
 # Pick 3 random queries
 np.random.seed(302)
-sample_qids = np.random.choice(np.unique(valid_qids), 3, replace=False)
+sample_qids = np.random.choice(np.unique(unique_val_qid), 3, replace=False)
 
 plt.figure(figsize=(18,5))
 
@@ -174,10 +173,10 @@ for i, qid in enumerate(sample_qids):
     pred_scores = pred_val[mask]
 
     # Sort documents by predicted score descending
-    order = np.argsort(-true_rels)
-    true_sorted = true_rels[order]
+    sorted_indices = np.argsort(-true_rels)
+    true_sorted = true_rels[sorted_indices]
     # predicted rank = position after sorting
-    pred_ranking = np.argsort(-pred_scores)
+    pred_ranking = pred_scores[sorted_indices]
 
     # Plot rankings
     plt.subplot(1, 3, i+1)
@@ -187,7 +186,7 @@ for i, qid in enumerate(sample_qids):
     plt.ylabel('Relevance / Score')
     plt.title(f'Query ID {qid} - {len(true_sorted)} docs')
     plt.grid(True, linestyle='--', alpha=0.5)
-    plt.ylim(0, max(np.max(true_sorted), np.max(pred_ranking)) + 0.5)
+    plt.ylim(min(np.min(true_sorted), np.min(pred_ranking)), max(np.max(true_sorted), np.max(pred_ranking)) + 0.5)
     plt.legend()
 
 plt.tight_layout()

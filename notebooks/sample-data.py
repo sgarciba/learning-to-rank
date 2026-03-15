@@ -2,7 +2,7 @@
 # 1. Import Libraries
 # =========================
 import numpy as np
-
+from collections import defaultdict
 # =========================
 # 2. Load Dataset
 # =========================
@@ -40,15 +40,37 @@ def read_data(file):
     return ys, qids, X_dicts
 
 
-def sample_data(X, y, qid, n_samples, seed=203):
+def sample_data_by_query(X, y, qid, target_n_rows=5000, seed=203):
+    """
+    Sample data by query id, including all documents for selected queries,
+    until approximately target_n_rows is reached.
+    """
     np.random.seed(seed)
     
-    if n_samples > len(X):
-        raise ValueError("n_samples larger than dataset")
-
-    idx = np.random.choice(len(X), size=n_samples, replace=False)
+    # Map from qid -> indices of rows
+    qid_to_indices = defaultdict(list)
+    for i, q in enumerate(qid):
+        qid_to_indices[q].append(i)
     
-    return X[idx], y[idx], qid[idx]
+    # Shuffle query IDs
+    all_qids = np.array(list(qid_to_indices.keys()))
+    np.random.shuffle(all_qids)
+    
+    selected_indices = []
+    total_rows = 0
+    
+    for q in all_qids:
+        idxs = qid_to_indices[q]
+        if total_rows + len(idxs) <= target_n_rows:
+            selected_indices.extend(idxs)
+            total_rows += len(idxs)
+        else:
+            break  # stop when reaching approx target rows
+    
+    # Subset arrays
+    selected_indices = np.array(selected_indices)
+    
+    return X[selected_indices], y[selected_indices], qid[selected_indices]
 
 
 ## TRAIN DATA
@@ -66,11 +88,11 @@ for i, feats in enumerate(X_dicts):
 y = np.array(ys)
 qid = np.array(qids)
 
-X_train_s, y_train_s, qid_train_s = sample_data(X, y, qid, n_samples=5000)
+X_train_s, y_train_s, qid_train_s = sample_data_by_query(X, y, qid, target_n_rows=5000)
 
 
 np.savez(
-    "../data/set1_train_sample_data.npz",
+    "../data/train_sample_data.npz",
     X=X_train_s,
     y=y_train_s,
     qid=qid_train_s
@@ -91,15 +113,16 @@ for i, feats in enumerate(X_dicts):
 y = np.array(ys)
 qid = np.array(qids)
 
-X_val_s, y_val_s, qid_val_s = sample_data(X, y, qid, n_samples=1000)
+X_val_s, y_val_s, qid_val_s = sample_data_by_query(X, y, qid, target_n_rows=1000)
 
 
 np.savez(
-    "../data/set1_val_sample_data.npz",
+    "../data/val_sample_data.npz",
     X=X_val_s,
     y=y_val_s,
     qid=qid_val_s
 )
+
 
 
 
