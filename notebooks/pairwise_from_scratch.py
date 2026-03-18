@@ -184,7 +184,7 @@ def logistic_regression(X_train, y_train, l_rate, iter, reg=None, lambda_=None):
             weights = weights - l_rate * grad_w
             bias = bias - l_rate * grad_b
     
-    return sigmoid, weights, bias, loss_hist
+    return sigmoid, loss_hist
 
 
 iter=100

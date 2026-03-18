@@ -98,49 +98,56 @@ def softmax(scores):
     return exps / np.sum(exps)
 
 
-def listwise_scratch(X_train, y_train, l_rate, iter):
+def listwise_scratch(X_train, y_train, qid, l_rate, iter):
 # ---- Step 1: Initialize weights ----
-    weights = np.zeros(X_train_reduced.shape[1])
+    weights = np.zeros(X_train.shape[1])
     bias = 0.0  # or y_train.mean()
-
+    unique_qids = np.unique(qid)
+    n_queries = len(unique_qids)
     # Track loss
     loss_hist = []
-
+    
     # ---- Step 2: Training loop ----
     for i in range(iter):
-        # 2.1 Predict scores for all docs in the query
-        scores = np.dot(X_train_reduced, weights) + bias  
+        total_loss = 0
 
-        # 2.2 Convert predicted scores to probabilities
-        pred = softmax(scores)  
+        for q in unique_qids:
+            mask = (qid == q)
+            X_q = X_train[mask]
+            y_q = y_train[mask]
+            
+            # 2.1 Predict scores for all docs in the query
+            scores = np.dot(X_q, weights) + bias  
 
-        # 2.3 Convert relevance labels to target distribution
-        target = softmax(y_train)  
+            # 2.2 Convert predicted scores to probabilities
+            pred = softmax(scores)  
 
-        # 2.4 Compute cross-entropy loss
-        loss = -np.sum(target * np.log(pred + 1e-8))  
-        loss_hist.append(loss)
+            # 2.3 Convert relevance labels to target distribution
+            target = softmax(y_q)  
 
-        # 2.5 Compute gradients
-        grad_w = np.dot(X_train_reduced.T, (pred - target))  
-        grad_b = np.sum(pred - target) 
+            # 2.4 Compute cross-entropy loss
+            loss = -np.sum(target * np.log(pred + 1e-8))  
+            total_loss += loss
 
-        # 2.6 Update weights
-        weights -= l_rate * grad_w
-        bias -= l_rate * grad_b
+            # 2.5 Compute gradients
+            grad_w = np.dot(X_q.T, (pred - target))  
+            grad_b = np.sum(pred - target) 
 
+            # 2.6 Update weights
+            weights += -l_rate * grad_w
+            bias += -l_rate * grad_b
 
-    return weights, bias, loss_hist
+        loss_hist.append(total_loss/n_queries) # Normalise Loss
 
+    return pred, loss_hist
 
 
 iter=100
 l_rate=0.01
-lambda_=0.1
 
-weights, bias, loss_hist = listwise_scratch(X_train_reduced, y_train, l_rate, iter)
+pred, loss_hist = listwise_scratch(X_train, y_train, qid_train, l_rate, iter)
 
-plt.plot(range(0,iter), loss_hist)
+plt.plot(range(iter), loss_hist)
 plt.title("Training Cross Entropy Loss over Iterations")
 plt.xlabel('Iteration')
 plt.ylabel('Loss')
