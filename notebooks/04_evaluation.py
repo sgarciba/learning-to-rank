@@ -9,15 +9,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from src.functions import *
-from lightgbm import LGBMRegressor, LGBMRanker
+from lightgbm import LGBMRegressor, LGBMClassifier, LGBMRanker
 from sklearn.svm import LinearSVC
 
 # =========================
 # 2. Load Dataset
 # =========================
-# X: features for (query, item)
+# X: document vectors
 # y: relevance label
-# qid: query id (used only for evaluation)
+# qid: query id
 
 train_data = np.load("../data/train_sample_data.npz")
 
@@ -32,9 +32,7 @@ X_valid = valid_data["X"]
 y_valid = valid_data["y"]
 qid_valid = valid_data["qid"]
 
-# =========================
-# 5. Pointwise Model (from scratch)
-# =========================
+
 
 class LtrModelSelection:
     
@@ -90,8 +88,7 @@ class LtrModelSelection:
         
             self.predictions[name] = preds
             self.loss[name]['Val'].append(ndcg_at_k(y, preds, qid))
-      
-            
+        
 
 models = {
     'PointwiseFromScratch': pointwise_from_scratch,
@@ -116,4 +113,65 @@ ltr = LtrModelSelection(models, params)
 
 ltr.fit(X_train, y_train, qid_train)
 
+ltr.predict(X_valid, y_valid, qid_valid)
 
+
+ltr.loss
+
+
+
+# pick 3 random queries from validation
+unique_val_qid = np.unique(qid_valid)
+np.random.seed(302)
+sample_qids = np.random.choice(unique_val_qid, 3, replace=False)
+
+model_names = list(ltr.predictions.keys())
+n_models = len(model_names)
+n_queries = len(sample_qids)
+
+plt.figure(figsize=(5 * n_queries, 4 * n_models))
+
+for row, model_name in enumerate(model_names):
+    preds = ltr.predictions[model_name]
+    
+    for col, qid in enumerate(sample_qids):
+        mask = qid_valid == qid
+        true_rels = y_valid[mask]
+        pred_scores = preds[mask]
+        
+        # sort by true relevance (consistent baseline)
+        sorted_indices = np.argsort(-true_rels)
+        true_sorted = true_rels[sorted_indices]
+        pred_sorted = pred_scores[sorted_indices]
+        
+        ax = plt.subplot(n_models, n_queries, row * n_queries + col + 1)
+        
+        ax.plot(
+            range(1, len(true_sorted) + 1),
+            true_sorted,
+            marker='o',
+            label='True Relevance'
+        )
+        
+        ax.plot(
+            range(1, len(pred_sorted) + 1),
+            pred_sorted,
+            marker='x',
+            linestyle='--',
+            label='Predicted'
+        )
+        
+        # titles only on top row
+        if row == 0:
+            ax.set_title(f'Query ID {qid}')
+        
+        # y-label only on first column
+        if col == 0:
+            ax.set_ylabel(f'{model_name}\nRelevance / Score')
+        
+        ax.set_xlabel('Ranked Documents')
+        ax.legend(fontsize=8)
+
+plt.tight_layout()
+plt.savefig('../figures/ranking_qid_valid_per_model.png')
+plt.show()

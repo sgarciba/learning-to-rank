@@ -41,29 +41,6 @@ The focus of this project is **modeling methodology and experimentation**, rathe
    - Metrics: **NDCG@5**, **Precision@K**, **MAP**  
    - Compared model performance across different parameters  
 
-4. **Experimental insights**
-   - Sampling strategy affects performance  
-   - Algorithm choice impacts ranking quality  
-   - Demonstrates ability to handle high-dimensional datasets
-
----
-
-## Example Output
-
-```text
-Query: "sample query text"
-Ranked URLs:
-1. url_10234
-2. url_23567
-3. url_47890
-
-learning-to-rank/
-│
-├── data/                  # sample dataset
-├── notebooks/             # preprocessing, experiments, 
-├── src/                   # model code, helpers
-├── figures/               # visualizations
-└── README.md
 
 ------------------------------------------------------------------
 

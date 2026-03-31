@@ -2,22 +2,27 @@ import numpy as np
 from itertools import combinations
 
 def pointwise_from_scratch(X_train, y_train, lr, iter, **kwargs):
-
+    
     # Initialize weights and bias
     weights = np.zeros(X_train.shape[1])
     bias = y_train.mean()
     n_samples = X_train.shape[0]
 
-    # Track loss
+    # Track loss and best params
     lossi = []
 
     for i in range(iter):
         # 1️ Predict
         pred = np.dot(X_train, weights) + bias  # vectorized
         
-        # 2️ Loss Function
+        # 2️.1 Loss Function
         mse = np.mean((y_train - pred) ** 2)
         lossi.append(mse)
+        
+        # 2.2 Track best iteration and store values
+        if (i > 0) & (mse <= lossi[-1]):
+            best_w = weights
+            best_b = bias
         
         # 3️ Compute gradients
         grad_w = (2 / n_samples) * np.dot(X_train.T, (pred - y_train))
@@ -27,7 +32,7 @@ def pointwise_from_scratch(X_train, y_train, lr, iter, **kwargs):
         weights += -lr * grad_w
         bias += -lr * grad_b
     
-    return pred, lossi
+    return best_w, best_b
 
 
 def build_pairwise(X, y, qid):
@@ -65,58 +70,40 @@ def build_pairwise(X, y, qid):
 
 
 
-def logistic_regression(X_train, y_train, lr, iter, qid, reg=None, lambda_=None):
+def logistic_regression(X, y, lr, iter, qid):
     
-    X_train, y_train = build_pairwise(X_train, y_train, qid)
+    X_pair, y_pair = build_pairwise(X, y, qid)
     
     # - Initialize weights and bias
-    weights = np.zeros(X_train.shape[1]) 
+    weights = np.zeros(X_pair.shape[1]) 
     bias = 0
-
     '''
     For logistic regression, its usually safe to initialize bias as 0 (or small value) rather than the mean of y.
     Using y_train.mean() wont break the code, but initializing at 0 is simpler and more standard.
     '''
-
-    n_samples = X_train.shape[0]
-    loss_hist = []
+    n_samples = X_pair.shape[0]
+    lossi = []
 
     for i in range(0, iter):
         
-        y_hat = np.dot(X_train, weights) + bias
+        y_hat = np.dot(X_pair, weights) + bias
         sigmoid = 1/(1+np.exp(-y_hat))
         
-        if reg == None:
-            loss = -np.mean(y_train * np.log(sigmoid) + (1 - y_train) * np.log(1 - sigmoid))
-        elif reg == 'lasso':
-            loss = -np.mean(y_train * np.log(sigmoid) + (1 - y_train) * np.log(1 - sigmoid)) \
-                + lambda_ * np.sum(np.abs(weights))
-        elif reg == 'ridge':    
-            loss = -np.mean(y_train * np.log(sigmoid) + (1 - y_train) * np.log(1 - sigmoid)) \
-                + lambda_ * np.sum(weights ** 2)
+        loss = -np.mean(y_pair * np.log(sigmoid) + (1 - y_pair) * np.log(1 - sigmoid))
+        lossi.append(loss)
         
-        loss_hist.append(loss)
+        # 2.2 Track best iteration and store values
+        if (i > 0) & (loss <= lossi[-1]):
+            best_w = weights
+            best_b = bias
         
-        if i > 0 and loss > loss_hist[-2]:
-            print(f'Reached Optimal Cross-Entropy Loss {loss:.4f} at iteration {i}')
-            break
+        grad_w = np.dot(X_pair.T, (sigmoid - y_pair)) / n_samples
+        grad_b = np.mean(sigmoid - y_pair)
         
-        else:
-            if reg == None:
-                grad_w = np.dot(X_train.T, (sigmoid - y_train)) / n_samples
-            elif reg == 'lasso':
-                grad_w = np.dot(X_train.T, (sigmoid - y_train)) / n_samples \
-                    + lambda_ * np.sign(weights)
-            elif reg == 'ridge':    
-                grad_w = np.dot(X_train.T, (sigmoid - y_train)) / n_samples \
-                    + 2 * lambda_ * weights 
-            
-            grad_b = np.mean(sigmoid - y_train)
-            
-            weights += -lr * grad_w
-            bias += -lr * grad_b
-    
-    return sigmoid, loss_hist
+        weights += -lr * grad_w
+        bias += -lr * grad_b
+        
+    return best_w, best_b
 
 
 def softmax(scores):
@@ -132,7 +119,7 @@ def listwise_scratch(X_train, y_train, lr, iter, qid):
     n_queries = len(unique_qids)
     
     # Track loss
-    loss_hist = []
+    lossi = []
 
     # ---- Step 2: Training loop ----
     for i in range(iter):
@@ -144,10 +131,10 @@ def listwise_scratch(X_train, y_train, lr, iter, qid):
             y_q = y_train[mask]
         
             # 2.1 Predict scores for all docs in the query
-            scores = np.dot(X_q, weights) + bias  
+            y_hat = np.dot(X_q, weights) + bias  
 
             # 2.2 Convert predicted scores to probabilities
-            pred = softmax(scores)  
+            pred = softmax(y_hat)  
 
             # 2.3 Convert relevance labels to target distribution
             target = softmax(y_q)  
@@ -164,9 +151,17 @@ def listwise_scratch(X_train, y_train, lr, iter, qid):
             weights += -lr * grad_w
             bias += -lr * grad_b
             
-        loss_hist.append(total_loss/n_queries) # Normalise Loss
+        
+        norm_loss = total_loss/n_queries    
+        lossi.append(norm_loss) # Normalise Loss
+        
+        # 2.2 Track best iteration and store values
+        if (i > 0) & (norm_loss <= lossi[-1]):
+            best_w = weights
+            best_b = bias
+    
 
-    return pred, loss_hist
+    return best_w, best_b
 
 
 def dcg_at_k(relevances, k):

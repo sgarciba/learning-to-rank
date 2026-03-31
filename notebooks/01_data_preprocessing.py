@@ -138,7 +138,7 @@ X_val_reduced = X_val_s[:, mask]
 
 np.savez(
     "../data/val_sample_data.npz",
-    X=X_val_s,
+    X=X_val_reduced,
     y=y_val_s,
     qid=qid_val_s
 )
