@@ -1,6 +1,6 @@
-# Learning-to-Rank – Yahoo! LTR Challenge Sample
+# 📌 Learning-to-Rank – Yahoo! LTR Challenge Sample
 
-## Project Overview
+## 🎯 Overview
 This project explores **learning-to-rank models** using a subset of the **Yahoo! Learning to Rank Challenge (C14, version 1.0)** dataset.  
 
 Learning-to-rank is widely used in search engines, recommendation systems, and marketplaces to **order items so that the most relevant appear first**.  
@@ -26,20 +26,68 @@ The focus of this project is **modeling methodology and experimentation**, rathe
 
 ---
 
-## Approach
+## 🧠 Models
 
-1. **Preprocessing**
-   - Normalized features  
-   - Handled missing values  
-   - Split into train / validation / test  
+### From Scratch
+- Pointwise ranking model
+- Pairwise ranking model
+- Listwise ranking model
 
-2. **Modeling**
-   - Implemented ranking models: e.g., RankNet, XGBoost ranker  
-   - Trained models on sampled dataset  
+### Baselines / Industry Models
+- LightGBM Regressor  
+- LightGBM LambdaRank  
+- LightGBM XendCG  
 
-3. **Evaluation**
-   - Metrics: **NDCG@5**, **Precision@K**, **MAP**  
-   - Compared model performance across different parameters  
+---
+
+## ⚙️ LTR Approaches
+
+### Pointwise
+- Predicts relevance independently per item
+- Ignores relationships within query groups
+- Simplest but weakest ranking formulation
+
+### Pairwise
+- Learns relative ordering between item pairs
+- Better aligned with ranking objectives
+- Improves over pointwise baseline
+
+### Listwise
+- Optimizes the full ranked list
+- Strongest theoretical formulation among scratch models
+- Best performance among custom implementations
+
+---
+
+## 📊 Results (NDCG)
+
+| Model | Train | Validation |
+|------|------|------------|
+| Pointwise (Scratch) | 0.656 | 0.679 |
+| Pairwise (Scratch) | 0.622 | 0.682 |
+| Listwise (Scratch) | 0.749 | 0.722 |
+| LightGBM Regressor | 0.809 | 0.762 |
+| LightGBM LambdaRank | 0.809 | 0.721 |
+| LightGBM XendCG | 0.809 | 0.753 |
+
+---
+
+## 📈 Key Insights
+
+- Pointwise is the weakest due to ignoring item interactions
+- Pairwise improves ranking by learning relative preferences
+- Listwise performs best among custom implementations
+- LightGBM models consistently outperform neural/scratch approaches
+- Gradient boosting remains very strong for tabular ranking tasks
+
+---
+
+## 🧪 Takeaways
+
+- LTR performance improves as models move from pointwise → pairwise → listwise
+- Classical boosting methods remain highly competitive
+- Neural/scratch models require more tuning to match performance
+- Query-group structure is essential for ranking tasks
 
 
 ------------------------------------------------------------------
