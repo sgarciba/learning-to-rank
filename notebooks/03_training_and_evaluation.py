@@ -12,6 +12,8 @@ from src.functions import *
 from lightgbm import LGBMRegressor, LGBMRanker
 from sklearn.svm import LinearSVC
 
+import torch
+
 # =========================
 # 2. Load Dataset
 # =========================
@@ -32,6 +34,7 @@ X_valid = valid_data["X"]
 y_valid = valid_data["y"]
 qid_valid = valid_data["qid"]
 
+
 # =========================
 # 3. Model Training
 # =========================
@@ -43,6 +46,7 @@ class LtrModelSelection:
         self.params = params
         self.weights = {}
         self.bias = {}
+        self.layers = {}
         self.predictions = {}
         self.loss = {}
  
@@ -55,7 +59,12 @@ class LtrModelSelection:
             _, qid_counts = np.unique(qid, return_counts=True)
             qid_counts = qid_counts.astype(int).flatten().tolist()
             
-            if 'Scratch' in name:
+            if 'RankNet' in name:
+                layers, _ = model_fn(X, y, qid, iter=param['iter'], lr=param['lr'])
+                self.layers[name] = layers
+                preds = predict_ranknet(X, qid, layers)
+
+            elif 'Scratch' in name:
                 model_output = model_fn(
                     X,
                     y,
@@ -65,9 +74,9 @@ class LtrModelSelection:
                 )
                 self.weights[name] = model_output[0]
                 self.bias[name] = model_output[1]
-                
+
                 preds = X @ self.weights[name] + self.bias[name]
-            
+
             else:
                 model_fn.set_params(**param) 
                 if 'Pointwise' in name:
@@ -83,7 +92,9 @@ class LtrModelSelection:
         for name, model_fn in self.models.items():
             print('Predicting:', name)
 
-            if 'Scratch' in name:
+            if 'RankNet' in name:
+                preds = predict_ranknet(X, qid, self.layers[name])
+            elif 'Scratch' in name:
                 preds = X @ self.weights[name] + self.bias[name]
             else:
                 preds = model_fn.predict(X)
@@ -97,6 +108,7 @@ models = {
     'PointwiseFromScratch': pointwise_from_scratch,
     'PairwiseFromScratch': logistic_regression,
     'ListwiseFromScratch': listwise_scratch,
+    'RankNetScratch': ranknet,
     'PointwiseLGBMRegressor': LGBMRegressor(objective='regression'),
     'LGBM_lambdarank': LGBMRanker(objective='lambdarank'),# pairwise+listwise
     'LGBM_xendcg': LGBMRanker(objective='rank_xendcg')   # listwise
@@ -104,8 +116,9 @@ models = {
 
 params = {
     'PointwiseFromScratch': {'lr': 0.01, 'iter': 100},
-    'PairwiseFromScratch': {'lr': 0.01, 'iter': 100},    
+    'PairwiseFromScratch': {'lr': 0.01, 'iter': 100},
     'ListwiseFromScratch': {'lr': 0.01, 'iter': 100},
+    'RankNetScratch': {'lr': 0.1, 'iter': 1000},
     'PointwiseLGBMRegressor': {'learning_rate':0.1, 'n_estimators':100, 'num_leaves':10, 'max_depth':3},
     'LGBM_lambdarank': {'learning_rate':0.1, 'n_estimators':100, 'num_leaves':10, 'max_depth':3},
     'LGBM_xendcg': {'learning_rate':0.1, 'n_estimators':100, 'num_leaves':10, 'max_depth':3}

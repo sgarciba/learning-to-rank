@@ -53,8 +53,8 @@ def sample_data_by_query(X, y, qid, target_n_rows=5000, seed=203):
     for i, q in enumerate(qid):
         qid_to_indices[q].append(i)
     
-    # Shuffle query IDs
-    all_qids = np.array(list(qid_to_indices.keys()))
+    # Exclude queries with only one document
+    all_qids = np.array([q for q, idxs in qid_to_indices.items() if len(idxs) > 1])
     np.random.shuffle(all_qids)
     
     selected_indices = []
@@ -102,8 +102,8 @@ non_zero_counts = (X_train_s != 0).sum(axis=0)
 mask = non_zero_counts > 10
 X_train_reduced = X_train_s[:, mask]
 
-print("Original features:", X_train_s.shape[1])
-print("Reduced features:", X_train_reduced.shape[1])
+print("Original features:", X.shape)
+print("Reduced features:", X_train_reduced.shape)
 
 
 np.savez(
@@ -135,6 +135,10 @@ qid = np.array(qids)
 X_val_s, y_val_s, qid_val_s = sample_data_by_query(X, y, qid, target_n_rows=1000)
 
 X_val_reduced = X_val_s[:, mask]
+
+print("Original features:", X.shape)
+print("Reduced features:", X_val_reduced.shape)
+
 
 np.savez(
     "../data/val_sample_data.npz",

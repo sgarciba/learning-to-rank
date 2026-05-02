@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import combinations
+import torch
 
 def pointwise_from_scratch(X_train, y_train, lr, iter, **kwargs):
     
@@ -162,6 +163,112 @@ def listwise_scratch(X_train, y_train, lr, iter, qid):
     
 
     return best_w, best_b
+
+
+class Linear:
+
+    def __init__(self, fan_in, fan_out, bias=True, generator=None):
+        self.weight = torch.randn((fan_in, fan_out), generator=generator) / fan_in ** 0.5
+        self.bias = torch.zeros(fan_out)
+
+    def __call__(self, x):
+        xmean = x.mean(dim=0, keepdim=True)
+        xvar = x.var(dim=0, keepdim=True, unbiased=False)
+        xhat = (x - xmean) / torch.sqrt(xvar + 1e-8)
+        self.out = xhat @ self.weight + self.bias
+        return self.out
+
+    def parameters(self):
+        return [self.weight, self.bias]
+
+
+class Tanh:
+
+    def __call__(self, x):
+        self.out = torch.tanh(x)
+        return self.out
+
+    def parameters(self):
+        return []
+
+
+def ranknet(X, y, qid, iter, lr=0.1):
+    X = torch.tensor(X, dtype=torch.float32)
+    y = torch.tensor(y, dtype=torch.float32)
+    qid = torch.tensor(qid, dtype=torch.float32)
+
+    unique_qids = torch.unique(qid)
+
+    g = torch.Generator().manual_seed(203)
+    _, d = X.shape
+
+    layers = [
+        Linear(d, 32, generator=g),
+        Tanh(),
+        Linear(32, 16, generator=g),
+        Tanh(),
+        Linear(16, 1, generator=g)
+    ]
+
+    parameters = [p for layer in layers for p in layer.parameters()]
+
+    for p in parameters:
+        p.requires_grad = True
+
+    lossi = []
+
+    for e in range(iter):
+        q_losses = []
+
+        for q in unique_qids:
+            mask = qid == q
+            X_q = X[mask]
+            y_q = y[mask]
+
+            x = X_q
+            for layer in layers:
+                x = layer(x)
+
+            i, j = torch.triu_indices(len(y_q), len(y_q), offset=1)
+            pairwise_diff = x[i] - x[j]
+
+            Y = (y_q[i] > y_q[j]).float().view(-1, 1)
+
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(pairwise_diff, Y, reduction='mean')
+            q_losses.append(loss)
+
+        l2_penalty = 1e-4 * sum(p.pow(2).sum() for p in parameters)
+        total_loss = torch.stack(q_losses).mean() + l2_penalty
+        lossi.append(total_loss.item())
+
+        for p in parameters:
+            p.grad = None
+        total_loss.backward()
+
+        effective_lr = lr if e < 200 else lr * 0.1
+        with torch.no_grad():
+            for p in parameters:
+                p.data -= effective_lr * p.grad
+
+        if (e + 1) % 100 == 0:
+            print(f"Training epoch ({e + 1}/{iter})")
+
+    return layers, lossi
+
+
+def predict_ranknet(X, qid, layers):
+    X = torch.tensor(X, dtype=torch.float32)
+    qid_t = torch.tensor(qid, dtype=torch.float32)
+    unique_qids = torch.unique(qid_t)
+    preds = torch.zeros(len(X))
+    with torch.no_grad():
+        for q in unique_qids:
+            mask = qid_t == q
+            x = X[mask]
+            for layer in layers:
+                x = layer(x)
+            preds[mask] = x.squeeze(-1)
+    return preds.numpy()
 
 
 def dcg_at_k(relevances, k):

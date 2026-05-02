@@ -32,6 +32,7 @@ The focus of this project is **modeling methodology and experimentation**, rathe
 - Pointwise ranking model
 - Pairwise ranking model
 - Listwise ranking model
+- RankNet (neural pairwise model built with PyTorch)
 
 ### Baselines / Industry Models
 - LightGBM Regressor  
@@ -66,9 +67,30 @@ The focus of this project is **modeling methodology and experimentation**, rathe
 | Pointwise (Scratch) | 0.656 | 0.679 |
 | Pairwise (Scratch) | 0.622 | 0.682 |
 | Listwise (Scratch) | 0.749 | 0.722 |
+| RankNet (Scratch) | 0.856 | 0.640 |
 | LightGBM Regressor | 0.809 | 0.762 |
 | LightGBM LambdaRank | 0.809 | 0.721 |
 | LightGBM XendCG | 0.809 | 0.753 |
+
+---
+
+---
+
+## 🔥 PyTorch Functions Used in RankNet
+
+| Function | Description |
+|----------|-------------|
+| `torch.tensor` | Converts numpy arrays to PyTorch tensors |
+| `torch.unique` | Returns unique query IDs for per-query iteration |
+| `torch.randn` | Initializes weights with random normal values |
+| `torch.zeros` | Initializes biases and prediction array to zero |
+| `torch.Generator` | Seeded random number generator for reproducibility |
+| `torch.triu_indices` | Generates upper-triangle indices for all unique item pairs |
+| `torch.stack` | Stacks per-query losses into a single tensor for averaging |
+| `torch.tanh` | Tanh activation function |
+| `torch.sqrt` | Element-wise square root, used in layer normalization |
+| `torch.no_grad` | Disables gradient tracking during inference |
+| `torch.nn.functional.binary_cross_entropy_with_logits` | Pairwise RankNet loss over item pairs per query |
 
 ---
 
@@ -79,6 +101,16 @@ The focus of this project is **modeling methodology and experimentation**, rathe
 - Listwise performs best among custom implementations
 - LightGBM models consistently outperform neural/scratch approaches
 - Gradient boosting remains very strong for tabular ranking tasks
+
+---
+
+## 🚀 Next Steps
+
+1. **Reduce RankNet overfitting** — implement early stopping and/or dropout to close the large train/val NDCG gap (~0.22)
+2. **Adam/AdamW optimizer for RankNet** — replace SGD with step decay; Adam improves convergence but needs regularization to prevent stronger overfitting
+3. **LambdaRank loss** — weight pairwise loss by |ΔNDCG| to directly optimise the evaluation metric rather than treating all pairs equally
+4. **Fix the sampling strategy** — resample by query instead of by row to avoid degenerate queries with only 1–2 documents, which distort training and evaluation
+5. **Hyperparameter tuning** — systematic grid or Bayesian search across learning rate, architecture depth, and regularization strength for all scratch models
 
 ---
 
